@@ -1,4 +1,3 @@
-# project1_openai/run_dwa_waypoints.py
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
@@ -12,29 +11,30 @@ class Robot:
         self.x = x
         self.y = y
         self.theta = theta
-        self.path_history = [(x, y)]  # 로봇의 경로 기록용 리스트
+        self.path_history = [(x, y)]  # List to record the robot's path history
+
 class DWAConfig:
     def __init__(self):
-        self.max_speed = 3.0        # 최대 속도
-        self.min_speed = -0.5       # 최소 속도(역주행 포함)
+        self.max_speed = 3.0        # Maximum speed
+        self.min_speed = -0.5       # Minimum speed (including reverse)
         self.max_yaw_rate = np.deg2rad(45.0)
         self.max_accel = 1.0
-        self.dt = 0.05              # 시간 간격
-        self.predict_time = 2.0     # 예측 시간
+        self.dt = 0.05              # Time step
+        self.predict_time = 2.0     # Prediction time
         self.goal_cost_gain = 3.0
-        self.heading_cost_gain = 1.0  # 추가: 목표 방향 오차 비용 게인
-        self.obstacle_cost_gain = 1.0
-        self.velocity_cost_gain = 0.5 # 속도 비용 게인
+        self.heading_cost_gain = 1.0  # alpha
+        self.obstacle_cost_gain = 1.0 # beta
+        self.velocity_cost_gain = 0.5 # gamma
 
 
 def add_map_border_obstacles(obstacles, grid_size, border_thickness=0.1):
     width, height = grid_size
 
-    obstacles.append((0, 0, border_thickness, height))  # 왼쪽
-    obstacles.append((width - border_thickness, 0, border_thickness, height))  # 오른쪽
+    obstacles.append((0, 0, border_thickness, height))  # left
+    obstacles.append((width - border_thickness, 0, border_thickness, height))  # right
 
-    obstacles.append((0, 0, width, border_thickness))  # 아래
-    obstacles.append((0, height - border_thickness, width, border_thickness))  # 위
+    obstacles.append((0, 0, width, border_thickness))  # bottom
+    obstacles.append((0, height - border_thickness, width, border_thickness))  # top
 
     return obstacles
 
@@ -44,10 +44,10 @@ def motion_model(robot, v, w, dt):
     robot.theta += w * dt
     robot.v = v
     robot.w = w
-    robot.path_history.append((robot.x, robot.y))  # 경로 기록에 현재 위치 추가
+    robot.path_history.append((robot.x, robot.y))  # Add current position to path history
 
 def calculate_dynamic_window(robot, config):
-    predict_window_time = 0.5  # ✅ 로봇이 0.5초 동안 낼 수 있는 속도 변화 범위
+    predict_window_time = 0.5  # Range of speed change the robot can achieve in 0.5 seconds
 
     vs = [
         robot.v - config.max_accel * predict_window_time,
@@ -205,7 +205,7 @@ def main():
         waypoints = result
     
     if not waypoints:
-        print("경유지를 생성할 수 없습니다.")
+        print("Cannot generate waypoints.")
         return
     
     robot = Robot(*waypoints[0], np.pi / 4)
@@ -224,16 +224,16 @@ def main():
         
         distance_to_target = np.hypot(robot.x - current_target[0], robot.y - current_target[1])
         if distance_to_target < 0.5:
-            print(f"경유지 {target_idx}에 도달했습니다: {current_target}")
+            print(f"Reached waypoint {target_idx}: {current_target}")
             reached_target.append(current_target)
             target_idx += 1
             if target_idx >= len(waypoints):
-                print("최종 목표에 도달했습니다!")
+                print("Reached the final goal!")
                 break
             current_target = waypoints[target_idx]
 
     total_distance = calculate_path_length(robot.path_history)
-    print(f"총 이동 거리: {total_distance:.2f} m")
+    print(f"Total travel distance: {total_distance:.2f} m")
     end_time = time.time()
     print(f'total_time: {end_time - start_time:.2f} seconds')
     plt.show()

@@ -7,30 +7,31 @@ class Robot:
         self.x = x
         self.y = y
         self.theta = theta
-        self.v = v  # 현재 속도
-        self.w = w  # 현재 각속도
+        self.v = v  # Current linear velocity
+        self.w = w  # Current angular velocity
         self.path_history = [(x, y)] 
+
 class DWAConfig:
     def __init__(self):
-        self.max_speed = 1.0        # 최대 속도
-        self.min_speed = -0.5       # 최소 속도(역주행 포함)
-        self.max_yaw_rate = np.deg2rad(45.0) # 최대 회전 속도
+        self.max_speed = 1.0        # Maximum speed
+        self.min_speed = -0.5       # Minimum speed (including reverse)
+        self.max_yaw_rate = np.deg2rad(45.0) # Maximum yaw rate
         self.max_accel = 0.4
-        self.dt = 0.05               # 시간 간격. 0.05초마다 로봇 상태 업데이트
-        self.predict_time = 3.0     # 예측 시간. 몇 초 후까지 예측할지 결정
-        self.goal_cost_gain = 3.0 # 목표 지점까지의 거리 비용 가중치
-        self.heading_cost_gain = 1.0  # 목표 방향 오차 비용 가중치
-        self.obstacle_cost_gain = 1.0 # 장애물 회피 비용 가중치
-        self.velocity_cost_gain = 0.5 # 속도 비용 가중치
+        self.dt = 0.05               # Time step. Update robot state every 0.05s
+        self.predict_time = 3.0     # Prediction time. Determines how far into the future to predict
+        self.goal_cost_gain = 3.0 # Goal distance cost gain
+        self.heading_cost_gain = 1.0  # Heading error cost gain (alpha)
+        self.obstacle_cost_gain = 1.0 # Obstacle avoidance cost gain (beta)
+        self.velocity_cost_gain = 0.5 # Velocity cost gain (gamma)
 
 def add_map_border_obstacles(obstacles, grid_size, border_thickness=0.1):
     width, height = grid_size
 
     obstacles.append((0, 0, border_thickness, height)) 
-    obstacles.append((width - border_thickness, 0, border_thickness, height))  # 오른쪽
+    obstacles.append((width - border_thickness, 0, border_thickness, height))  
 
     obstacles.append((0, 0, width, border_thickness))  
-    obstacles.append((0, height - border_thickness, width, border_thickness))  # 위
+    obstacles.append((0, height - border_thickness, width, border_thickness))  
 
     return obstacles
 
@@ -42,6 +43,7 @@ def motion_model(robot, v, w, dt):
     robot.v = v
     robot.w = w
     robot.path_history.append((robot.x, robot.y)) 
+
 def calculate_dynamic_window(robot, config):
     predict_window_time = 0.5 
     vs = [

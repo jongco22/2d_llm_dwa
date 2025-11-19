@@ -2,9 +2,14 @@ import openai
 import json
 import os
 import time
+from dotenv import load_dotenv
 
-# OpenAI API 키 설정 (본인의 키로 변경)
+dotenv_path = '' 
+load_dotenv(dotenv_path)
+
 openai_api_key = os.getenv("OPENAI_API_KEY")
+openai.api_key = openai_api_key
+
 
 sysprompt = """You are a path planning assistant for mobile robots navigating using the Dynamic Window Approach (DWA).
 Your task is to generate a set of intermediate waypoints to guide the robot from a start point to a goal point while
@@ -33,24 +38,6 @@ avoiding local minima and obstacles, and while ensuring that the generated path 
 
 def get_waypoints(grid_size, start, goal, obstacles):
     start_time = time.time()
-    """
-    주어진 시작점과 목표점, 그리고 장애물 정보를 바탕으로 LLM을 이용해
-    chain-of-thought 과정을 포함한 경로를 생성하는 함수입니다.
-    
-    각 Iteration마다 LLM은 다음 정보를 포함해야 합니다:
-    - 현재 Iteration의 기준 점
-    - 장애물이나 경로상의 문제점을 분석한 Thought
-    - 우회 또는 진행을 위한 Selected Point
-    - 그 단계에 대한 평가(Evaluation)
-    
-    최종적으로 "Generated Path: [[x1, y1], [x2, y2], ...]" 형태의 경로를 반환합니다.
-    
-    :param start: [x, y] 형태의 시작 좌표
-    :param goal: [x, y] 형태의 목표 좌표
-    :param obstacles: [[x, y, width, height], ...] 형태의 장애물 리스트
-    :return: LLM의 chain-of-thought 전체 응답 문자열
-    
-    """
 
     user_prompt = f"""
     I will provide the environment details as a JSON object.
@@ -120,8 +107,6 @@ def get_waypoints(grid_size, start, goal, obstacles):
     Please generate the complete chain-of-thought reasoning text including the final generated path.
     """
 
-    
-
     response = openai.ChatCompletion.create(
         model="gpt-4-turbo",
         messages=[
@@ -131,17 +116,16 @@ def get_waypoints(grid_size, start, goal, obstacles):
         temperature=0
     )
 
-
     def extract_waypoints(response_content):
         """
-        응답 문자열에서 'Generated Path:' 이후의 JSON 형식의 부분을 추출합니다.
+        Extracts the JSON-formatted section after 'Generated Path:' from the response string.
         """
         try:
             json_str = response_content.split("Generated Path:")[-1].strip()
             waypoints = json.loads(json_str)
             return waypoints
         except Exception as e:
-            print("JSON 파싱 또는 추출 중 오류 발생:", e)
+            print("JSON parsing or extraction error:", e)
             raise e
 
     print(f'response: {response}')

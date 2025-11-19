@@ -3,10 +3,10 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
 import math
 
-# DWA와 Dijkstra를 통합한 하이브리드 경로 계획 시뮬레이터
+# Hybrid path planning simulator integrating DWA and Dijkstra
 
 # ==============================================================================
-# Dijkstra 알고리즘 코드 부분 (Global Path Planner)
+# Dijkstra algorithm code section (Global Path Planner)
 # ==============================================================================
 class DijkstraPlanner:
     """
@@ -137,7 +137,7 @@ class DijkstraPlanner:
                 [1, -1, math.sqrt(2)], [1, 1, math.sqrt(2)]]
 
 # ==============================================================================
-# DWA 알고리즘 코드 부분 (Local Path Planner)
+# DWA algorithm code section (Local Path Planner)
 # ==============================================================================
 class Robot:
     def __init__(self, x, y, theta, v=0.0, w=0.0):
@@ -210,7 +210,7 @@ def evaluate_trajectory(robot, v, w, config, goal, obstacles):
         if is_robot_colliding(traj_x, traj_y, traj_theta, obstacles, config.robot_size):
             return float('inf'), np.array(trajectory)
 
-    # 마지막 지점만으로 평가
+    # Evaluate based on the last point only
     final_x, final_y = trajectory[-1]
     goal_cost = np.hypot(goal[0] - final_x, goal[1] - final_y)
     
@@ -219,7 +219,7 @@ def evaluate_trajectory(robot, v, w, config, goal, obstacles):
 
     min_dist_to_obstacle = float('inf')
     for ox, oy, w, h in obstacles:
-        # 직사각형 장애물의 중심점과의 거리로 단순화
+        # Simplify as distance to the center point of rectangular obstacles
         center_x, center_y = ox + w/2, oy + h/2
         dist = np.hypot(final_x - center_x, final_y - center_y)
         min_dist_to_obstacle = min(min_dist_to_obstacle, dist)
@@ -258,35 +258,35 @@ def plot_simulation(robot, start, goal, obstacles, grid_size, global_path, traje
     plt.cla()
     ax = plt.gca()
 
-    # 장애물 그리기
+    # Draw obstacles
     for obs in obstacles:
         ox, oy, w, h = obs
         ax.add_patch(plt.Rectangle((ox, oy), w, h, color='black'))
 
-    # 시작점, 목표점 그리기
+    # Draw start and goal points
     plt.scatter(start[0], start[1], color='blue', s=100, marker='o', label="Start")
     plt.scatter(goal[0], goal[1], color='red', s=100, marker='s', label="Final Goal")
     
-    # Dijkstra 전역 경로 그리기
+    # Draw Dijkstra global path
     if global_path:
         gx, gy = zip(*global_path)
         plt.plot(gx, gy, linestyle='-', color='green', linewidth=3, label='Global Path (Dijkstra)')
 
-    # 로봇의 실제 이동 경로 그리기
+    # Draw robot's actual path
     if len(robot.path_history) > 1:
         path_x, path_y = zip(*robot.path_history)
         plt.plot(path_x, path_y, linestyle='--', color='orange', linewidth=2, label='Robot Path (DWA)')
     
-    # DWA 후보 경로들 그리기
+    # Draw DWA candidate trajectories
     if trajectories:
         for traj in trajectories:
             plt.plot(traj[:, 0], traj[:, 1], color='yellow', alpha=0.3, linewidth=1)
 
-    # DWA가 선택한 최적 경로 그리기
+    # Draw optimal trajectory selected by DWA
     if chosen_trajectory is not None:
         plt.plot(chosen_trajectory[:, 0], chosen_trajectory[:, 1], color='blue', alpha=0.8, linewidth=1.5)
 
-    # 로봇 그리기
+    # Draw robot
     half = DWAConfig().robot_size / 2.0
     corners = []
     for dx, dy in [(-half, -half), (-half, half), (half, half), (half, -half)]:
@@ -302,12 +302,12 @@ def plot_simulation(robot, start, goal, obstacles, grid_size, global_path, traje
     plt.pause(0.01)
 
 # ==============================================================================
-# 메인 실행 함수
+# main function
 # ==============================================================================
 def main():
     print("Dijkstra + DWA Hybrid Path Planning start!!")
     
-    # --- 시뮬레이션 설정 ---
+    # --- Simulation Settings ---
     grid_size = (20, 20)
     start = (3, 7)
     final_goal = (1, 19)
@@ -316,22 +316,20 @@ def main():
         (9, 10, 1, 4), (0, 13, 13, 1), (2, 18, 4, 1)
     ]
     
-    # --- 1. Dijkstra로 전역 경로 생성 ---
-    # DWA 장애물(사각형)을 Dijkstra 장애물(점)로 변환
+    # --- 1. Generate Global Path with Dijkstra ---
     ox, oy = [], []
     for obs in obstacles_rect:
         x, y, w, h = obs
-        # 사각형의 경계와 내부를 점으로 샘플링
         for i in np.arange(x, x + w, 0.5):
             for j in np.arange(y, y + h, 0.5):
                 ox.append(i)
                 oy.append(j)
-    # 맵 경계도 장애물로 추가
+    # Add map boundaries as obstacles
     for i in np.arange(0, grid_size[0], 0.5):
         ox.extend([i, i, 0, grid_size[0]])
         oy.extend([0, grid_size[1], i, i])
 
-    # Dijkstra 플래너 초기화 및 경로 계산
+    # Initialize Dijkstra planner and calculate path
     dijkstra_resolution = 0.5
     dijkstra_robot_radius = 0.8
     dijkstra = DijkstraPlanner(ox, oy, dijkstra_resolution, dijkstra_robot_radius)
@@ -341,44 +339,44 @@ def main():
         print("Dijkstra failed to find a path.")
         return
 
-    # 경로를 시작점에서 목표점 순으로 뒤집기
+    # Reverse path to go from start to goal
     global_path = list(zip(rx, ry))[::-1]
 
-    # --- 2. DWA로 지역 경로 주행 ---
+    # --- 2. Navigate Local Path with DWA ---
     robot = Robot(start[0], start[1], np.pi / 4)
     config = DWAConfig()
     
-    # DWA가 따라갈 경유지 인덱스
+    # Index of the waypoint DWA is following
     target_waypoint_index = 0
     
     plt.figure(figsize=(10, 10))
 
     for i in range(1000):
-        # 현재 목표 경유지 설정
+        # Set current target waypoint
         current_target = global_path[target_waypoint_index]
 
-        # DWA 제어 실행
+        # Execute DWA control
         v, w, trajectories, best_trajectory = dwa_control(robot, config, current_target, obstacles_rect)
         
-        # 로봇 상태 업데이트
+        # Update robot state
         motion_model(robot, v, w, config.dt)
         
-        # 시각화
+        # Visualization
         plot_simulation(robot, start, final_goal, obstacles_rect, grid_size, global_path, trajectories, best_trajectory)
 
-        # 현재 경유지에 도달했는지 확인
+        # Check if reached current waypoint
         dist_to_waypoint = np.hypot(robot.x - current_target[0], robot.y - current_target[1])
-        if dist_to_waypoint < 1.0: # 경유지 도착 반경
-            # 마지막 경유지가 아니면 다음 경유지로 업데이트
+        if dist_to_waypoint < 1.0: # Waypoint arrival radius
+            # Update to next waypoint if not the last one
             if target_waypoint_index < len(global_path) - 1:
                 target_waypoint_index += 1
             else:
-                 # 최종 목표점에 가까워지면 루프 탈출 조건 확인
+                 # Check loop exit condition if close to final goal
                 if np.hypot(robot.x - final_goal[0], robot.y - final_goal[1]) < 0.5:
                     print("Goal reached!")
                     break
         
-        # 최종 목표 도달 확인 (백업)
+        # Check if final goal reached
         if np.hypot(robot.x - final_goal[0], robot.y - final_goal[1]) < 0.5:
             print("Goal reached!")
             break
